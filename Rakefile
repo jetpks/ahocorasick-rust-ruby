@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rake/testtask'
-require 'rb_sys/extensiontask'
+require 'rake/extensiontask'
 
 CROSS_PLATFORMS = %w[
   aarch64-linux
@@ -12,10 +12,11 @@ CROSS_PLATFORMS = %w[
 
 spec = Bundler.load_gemspec('ahocorasick-rust.gemspec')
 
-RbSys::ExtensionTask.new('rahocorasick', spec) do |ext|
-  ext.lib_dir = 'lib/rahocorasick'
-  ext.cross_compile = true
-  ext.cross_platform = CROSS_PLATFORMS
+Rake::ExtensionTask.new('rahocorasick', spec) do |c|
+  c.lib_dir = 'lib/rahocorasick'
+  c.source_pattern = '*.{rs,toml}'
+  c.cross_compile = true
+  c.cross_platform = CROSS_PLATFORMS
 end
 
 Rake::TestTask.new do |t|
