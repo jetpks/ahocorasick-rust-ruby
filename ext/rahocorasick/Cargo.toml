@@ -1,5 +1,5 @@
 [package]
-edition = "2021"
+edition = "2024"
 name = "rahocorasick"
 version = "0.1.0"
 
@@ -8,5 +8,5 @@ version = "0.1.0"
 crate-type = ["cdylib"]
 
 [dependencies]
-aho-corasick = "0.7"
-magnus = "0.4"
+aho-corasick = "1.1"
+magnus = "0.8"
