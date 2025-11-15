@@ -24,8 +24,7 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-          cargo-cache: true
-          cache-version: ruby-${{ matrix.ruby }}
+          cargo-cache: sccache
 
       - name: Compile extension
         run: bundle exec rake dev compile
