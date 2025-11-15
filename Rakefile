@@ -10,7 +10,7 @@ CROSS_PLATFORMS = %w[
   x86_64-linux
 ].freeze
 
-spec = Bundler.load_gemspec('rahocorasick.gemspec')
+spec = Bundler.load_gemspec('ahocorasick-rust.gemspec')
 
 Rake::ExtensionTask.new('rahocorasick', spec) do |c|
   c.lib_dir = 'lib/rahocorasick'

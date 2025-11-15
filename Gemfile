@@ -2,7 +2,7 @@
 
 source 'https://rubygems.org'
 
-# Specify your gem's dependencies in rahocorasick.gemspec
+# Specify your gem's dependencies in ahocorasick-rust.gemspec
 gemspec
 
 gem 'rake', '~> 13.0'
