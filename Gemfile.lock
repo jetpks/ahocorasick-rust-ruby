@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rahocorasick (0.1.2)
+    ahocorasick-rust (1.0.0)
       rb_sys (~> 0.9.117)
 
 GEM
@@ -47,7 +47,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  rahocorasick!
+  ahocorasick-rust!
   rake (~> 13.0)
   rake-compiler (~> 1.2)
   rb_sys

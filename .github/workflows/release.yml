@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build_native:
+    name: Build native gem (${{ matrix.ruby-platform }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-platform:
+          - arm64-darwin
+          - x86_64-darwin
+          - x86_64-linux
+          - aarch64-linux
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oxidize-rb/actions/setup-ruby-and-rust@main
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          cargo-cache: sccache
+
+      - name: Touch Rakefile
+        run: touch Rakefile
+
+      - uses: oxidize-rb/cross-gem-action@main
+        with:
+          platform: ${{ matrix.ruby-platform }}
+          directory: ./
+          ruby-versions: "3.3, 3.2, 3.1, 3.0, 2.7"
+          setup: bundle install
+
+  build_source:
+    name: Build source gem
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oxidize-rb/actions/setup-ruby-and-rust@main
+        with:
+          ruby-version: "3.3"
+          bundler-cache: false
+          cargo-cache: sccache
+
+      - name: Build source gem
+        run: |
+          gem build ahocorasick-rust.gemspec
+          mkdir -p pkg/
+          mv *.gem pkg/
+
+      - name: Upload source gem
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-gem
+          path: pkg/
+
+  publish:
+    name: Publish to RubyGems
+    runs-on: ubuntu-latest
+    needs:
+      - build_native
+      - build_source
+    permissions:
+      contents: write
+    steps:
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cross-gem
+          path: pkg/
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: source-gem
+          path: pkg/
+
+      - name: Display structure of downloaded gems
+        run: ls -R pkg/
+
+      - name: Publish gems to RubyGems
+        env:
+          RUBYGEMS_API_KEY: ${{ secrets.RUBYGEM_TOKEN }}
+        run: |
+          mkdir -p $HOME/.gem
+          touch $HOME/.gem/credentials
+          chmod 0600 $HOME/.gem/credentials
+          printf -- "---\n:rubygems_api_key: ${RUBYGEMS_API_KEY}\n" > $HOME/.gem/credentials
+
+          cd pkg
+          for gem_file in *.gem; do
+            echo "Publishing ${gem_file}..."
+            gem push "${gem_file}"
+          done
+
+      - name: Test installation
+        run: |
+          gem install ahocorasick-rust --verbose
+          ruby -rahocorasick-rust -e "puts AhoCorasickRust.new(['foo', 'bar']).lookup('Foolish men play football in bar');"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: pkg/*.gem
+          generate_release_notes: true
