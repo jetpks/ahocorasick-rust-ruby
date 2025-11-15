@@ -2,7 +2,7 @@ PATH
   remote: .
   specs:
     rahocorasick (0.1.2)
-      rb_sys (>= 0.9.54)
+      rb_sys (~> 0.9.117)
 
 GEM
   remote: https://rubygems.org/
@@ -17,7 +17,9 @@ GEM
     rake (13.0.6)
     rake-compiler (1.2.1)
       rake
-    rb_sys (0.9.60)
+    rake-compiler-dock (1.9.1)
+    rb_sys (0.9.117)
+      rake-compiler-dock (= 1.9.1)
     regexp_parser (2.5.0)
     rexml (3.2.5)
     rubocop (1.36.0)

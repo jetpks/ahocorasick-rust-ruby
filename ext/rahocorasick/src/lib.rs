@@ -1,5 +1,5 @@
 use aho_corasick::AhoCorasick;
-use magnus::{define_class, method, function, prelude::*, Error};
+use magnus::{method, function, prelude::*, Error, Ruby};
 
 #[magnus::wrap(class = "RAhoC")]
 pub struct RAhoC {
@@ -8,9 +8,10 @@ pub struct RAhoC {
 }
 
 impl RAhoC {
-    fn new(words: Vec<String>) -> Self {
-        let ac = AhoCorasick::new(&words);
-        Self { words, ac }
+    fn new(ruby: &Ruby, words: Vec<String>) -> Result<Self, Error> {
+        let ac = AhoCorasick::new(&words)
+            .map_err(|e| Error::new(ruby.exception_runtime_error(), format!("Failed to build automaton: {}", e)))?;
+        Ok(Self { words, ac })
     }
 
     fn lookup(&self, haystack: String) -> Vec<String> {
@@ -23,8 +24,8 @@ impl RAhoC {
 }
 
 #[magnus::init]
-fn main() -> Result<(), Error> {
-    let class = define_class("RAhoC", Default::default())?;
+fn main(ruby: &Ruby) -> Result<(), Error> {
+    let class = ruby.define_class("RAhoC", ruby.class_object())?;
     class.define_singleton_method("new", function!(RAhoC::new, 1))?;
     class.define_method("lookup", method!(RAhoC::lookup, 1))?;
     Ok(())

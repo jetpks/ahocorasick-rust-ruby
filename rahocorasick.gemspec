@@ -19,5 +19,5 @@ Gem::Specification.new do |s|
   s.required_ruby_version = '>= 2.7.0'
 
   # needed until rubygems supports Rust support is out of beta
-  s.add_dependency 'rb_sys', '>= 0.9.54'
+  s.add_dependency 'rb_sys', '~> 0.9.117'
 end
