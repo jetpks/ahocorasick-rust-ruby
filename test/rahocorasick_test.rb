@@ -147,4 +147,148 @@ class RahocorasickTest < Test::Unit::TestCase
     matcher = AhoCorasickRust.new(%w[foo bar])
     assert_raise(TypeError) { matcher.lookup(['hello', 'world']) }
   end
+
+  # lookup_with_positions tests
+  def test_lookup_with_positions_returns_pattern_and_offsets
+    matcher = AhoCorasickRust.new(%w[fox dog])
+    text = 'The quick brown fox jumps over the lazy dog.'
+    result = matcher.lookup_with_positions(text)
+
+    assert_equal(2, result.length)
+    assert_equal({ pattern: 'fox', start: 16, end: 19 }, result[0])
+    assert_equal({ pattern: 'dog', start: 40, end: 43 }, result[1])
+  end
+
+  def test_lookup_with_positions_with_no_matches
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    result = matcher.lookup_with_positions('hello world')
+    assert_equal([], result)
+  end
+
+  def test_lookup_with_positions_with_multiple_occurrences
+    matcher = AhoCorasickRust.new(['test'])
+    result = matcher.lookup_with_positions('test this test')
+
+    assert_equal(2, result.length)
+    assert_equal({ pattern: 'test', start: 0, end: 4 }, result[0])
+    assert_equal({ pattern: 'test', start: 10, end: 14 }, result[1])
+  end
+
+  def test_lookup_with_positions_with_unicode
+    matcher = AhoCorasickRust.new(%w[数据])
+    result = matcher.lookup_with_positions('金数据工具')
+
+    assert_equal(1, result.length)
+    # Note: offsets are in bytes, not characters
+    assert_equal('数据', result[0][:pattern])
+    assert(result[0][:start] > 0)
+    assert(result[0][:end] > result[0][:start])
+  end
+
+  # Case-insensitive matching tests
+  def test_case_insensitive_matching
+    matcher = AhoCorasickRust.new(['Ruby'], case_insensitive: true)
+    result = matcher.lookup('I love ruby and RUBY')
+    assert_equal(['Ruby', 'Ruby'], result)
+  end
+
+  def test_case_insensitive_with_multiple_patterns
+    matcher = AhoCorasickRust.new(%w[foo BAR], case_insensitive: true)
+    result = matcher.lookup('FOO and bar and Foo')
+    assert_equal(['foo', 'BAR', 'foo'], result)
+  end
+
+  def test_case_insensitive_false_still_case_sensitive
+    matcher = AhoCorasickRust.new(['Ruby'], case_insensitive: false)
+    result = matcher.lookup('I love ruby and RUBY')
+    assert_equal([], result)
+  end
+
+  def test_case_sensitive_is_default
+    matcher1 = AhoCorasickRust.new(['Ruby'])
+    matcher2 = AhoCorasickRust.new(['Ruby'], case_insensitive: false)
+
+    text = 'I love ruby and RUBY'
+    assert_equal(matcher1.lookup(text), matcher2.lookup(text))
+  end
+
+  # replace_all tests - with hash
+  def test_replace_all_with_hash
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    text = 'foo and bar are here'
+    result = matcher.replace_all(text, { 'foo' => 'FOO', 'bar' => 'BAR' })
+    assert_equal('FOO and BAR are here', result)
+  end
+
+  def test_replace_all_with_partial_hash
+    matcher = AhoCorasickRust.new(%w[foo bar baz])
+    text = 'foo bar baz'
+    result = matcher.replace_all(text, { 'foo' => 'FOO' })
+    # Only foo is replaced, bar and baz stay the same
+    assert_equal('FOO bar baz', result)
+  end
+
+  def test_replace_all_with_empty_hash
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    text = 'foo and bar'
+    result = matcher.replace_all(text, {})
+    # Nothing is replaced
+    assert_equal('foo and bar', result)
+  end
+
+  def test_replace_all_preserves_non_matched_text
+    matcher = AhoCorasickRust.new(['world'])
+    text = 'Hello, world! How are you?'
+    result = matcher.replace_all(text, { 'world' => 'Ruby' })
+    assert_equal('Hello, Ruby! How are you?', result)
+  end
+
+  # replace_all tests - with block
+  def test_replace_all_with_block
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    text = 'foo and bar'
+    result = matcher.replace_all(text) { |match| match.upcase }
+    assert_equal('FOO and BAR', result)
+  end
+
+  def test_replace_all_with_block_custom_logic
+    matcher = AhoCorasickRust.new(%w[apple banana cherry])
+    text = 'I like apple, banana, and cherry'
+    result = matcher.replace_all(text) do |fruit|
+      { 'apple' => '🍎', 'banana' => '🍌', 'cherry' => '🍒' }[fruit]
+    end
+    assert_equal('I like 🍎, 🍌, and 🍒', result)
+  end
+
+  def test_replace_all_with_block_different_lengths
+    matcher = AhoCorasickRust.new(['a', 'bb'])
+    text = 'a bb a bb'
+    result = matcher.replace_all(text) { |match| match.length.to_s }
+    assert_equal('1 2 1 2', result)
+  end
+
+  def test_replace_all_with_no_matches
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    text = 'hello world'
+    result = matcher.replace_all(text, { 'foo' => 'FOO' })
+    assert_equal('hello world', result)
+  end
+
+  # Combined features tests
+  def test_case_insensitive_lookup_with_positions
+    matcher = AhoCorasickRust.new(['ruby'], case_insensitive: true)
+    text = 'Ruby is great and RUBY rocks'
+    result = matcher.lookup_with_positions(text)
+
+    assert_equal(2, result.length)
+    assert_equal({ pattern: 'ruby', start: 0, end: 4 }, result[0])
+    assert_equal({ pattern: 'ruby', start: 18, end: 22 }, result[1])
+  end
+
+  def test_case_insensitive_replace_all
+    matcher = AhoCorasickRust.new(['ruby'], case_insensitive: true)
+    text = 'I love Ruby and RUBY'
+    result = matcher.replace_all(text, { 'ruby' => 'Python' })
+    assert_equal('I love Python and Python', result)
+  end
 end
