@@ -19,10 +19,12 @@ Aho-Corasick is a powerful string searching algorithm that can find **multiple p
 
 **Why this gem rocks:**
 - 🦀 Powered by Rust for maximum speed
-- 💎 Easy Ruby interface
+- 💎 Clean, intuitive Ruby API with 7+ search methods
 - 🚀 Up to **67x faster** than pure Ruby implementations
 - ✨ Precompiled binaries for major platforms
-- 🌈 Works with Ruby 2.7+
+- 🎯 Multiple search modes: overlapping, positioned, existence checks
+- 🔄 Find & replace with hash or block-based logic
+- 🌈 Works with Ruby 2.7+ and UTF-8/emoji
 
 ## Installation 📦
 
@@ -44,24 +46,135 @@ Or install it yourself:
 gem install ahocorasick-rust
 ```
 
-## Usage 🎀
+## Features ✨
 
-It's super simple!
+- **Multiple search modes** - Find all matches, overlapping matches, or just check existence
+- **Position tracking** - Get byte offsets for every match
+- **Case-insensitive matching** - Optional ASCII case-insensitive search
+- **Match strategies** - Control priority when patterns overlap
+- **Find & replace** - Replace patterns with strings or dynamic logic via blocks
+- **Unicode support** - Works seamlessly with UTF-8 text and emoji
+- **Zero-copy where possible** - Efficient memory usage
+
+## Quick Start 🎀
+
+### Basic Pattern Matching
 
 ```ruby
 require 'ahocorasick-rust'
 
-# Create a new matcher with your patterns
-animals = ['cat', 'dog', 'bunny', 'fox']
-matcher = AhoCorasickRust.new(animals)
+# Create a matcher with your patterns
+matcher = AhoCorasickRust.new(['cat', 'dog', 'fox'])
 
-# Search for all patterns in your text - finds them all in one pass! ✨
-text = "The quick brown fox jumps over the lazy dog."
-matcher.lookup(text)
+# Find all matches
+matcher.lookup("The quick brown fox jumps over the lazy dog.")
 # => ["fox", "dog"]
+
+# Check if any pattern exists
+matcher.match?("I have a cat")
+# => true
 ```
 
-**Want more examples?** Check out our [example script](scripts/example.rb) with content filtering, language detection, and more! 🌈
+### Case-Insensitive Matching
+
+```ruby
+matcher = AhoCorasickRust.new(['Ruby', 'Python'], case_insensitive: true)
+
+matcher.lookup('I love RUBY and python!')
+# => ["Ruby", "Python"]
+```
+
+### Get Match Positions
+
+```ruby
+matcher = AhoCorasickRust.new(['fox', 'dog'])
+
+matcher.lookup_with_positions('The fox and dog')
+# => [
+#      { pattern: 'fox', start: 4, end: 7 },
+#      { pattern: 'dog', start: 12, end: 15 }
+#    ]
+```
+
+### Find & Replace
+
+```ruby
+matcher = AhoCorasickRust.new(['bad', 'worse', 'worst'])
+
+# Replace with hash
+matcher.replace_all('This is bad and worse', { 'bad' => 'good', 'worse' => 'better' })
+# => "This is good and better"
+
+# Replace with block
+matcher.replace_all('This is bad and worse') { |word| '*' * word.length }
+# => "This is *** and *****"
+```
+
+### Overlapping Matches
+
+```ruby
+matcher = AhoCorasickRust.new(['abc', 'bcd', 'cde'])
+
+# Regular lookup finds non-overlapping matches
+matcher.lookup('abcde')
+# => ["abc"]
+
+# Overlapping lookup finds all matches
+matcher.lookup_overlapping('abcde')
+# => ["abc", "bcd", "cde"]
+```
+
+### Advanced: Match Strategies
+
+```ruby
+# Prefer longest matches
+matcher = AhoCorasickRust.new(
+  ['test', 'testing'],
+  match_kind: :leftmost_longest
+)
+
+matcher.lookup('testing')
+# => ["testing"]  # chooses longer match over 'test'
+```
+
+### Find First (Efficient for Existence Checks)
+
+```ruby
+matcher = AhoCorasickRust.new(['foo', 'bar', 'baz'])
+
+# Get just the first match (faster than getting all matches)
+matcher.find_first('hello foo bar baz')
+# => "foo"
+
+# Or with position
+matcher.find_first_with_position('hello foo bar')
+# => { pattern: 'foo', start: 6, end: 9 }
+```
+
+## API Overview 🔍
+
+**Constructor:**
+- `AhoCorasickRust.new(patterns, case_insensitive: false, match_kind: :leftmost_first)`
+
+**Search Methods:**
+- `#lookup(text)` - Find all non-overlapping matches
+- `#lookup_overlapping(text)` - Find all matches including overlaps
+- `#lookup_with_positions(text)` - Find matches with byte positions
+- `#match?(text)` - Check if any pattern exists (returns boolean)
+- `#find_first(text)` - Get first match only
+- `#find_first_with_position(text)` - Get first match with position
+
+**Replace Methods:**
+- `#replace_all(text, hash)` - Replace with hash mapping
+- `#replace_all(text) { |match| ... }` - Replace with block
+
+## Documentation 📖
+
+- **[API Reference](docs/reference.md)** - Complete method documentation with examples
+- **[Match Kind Guide](docs/match_kind.md)** - Understanding match strategies
+- **[Example Script](scripts/example.rb)** - Real-world usage examples
+
+**Want more examples?** Check out our example script with content filtering, language detection, and more! 🌈
 
 ## Benchmark 📊
 
