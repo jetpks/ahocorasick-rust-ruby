@@ -92,14 +92,18 @@ jobs:
       - name: Publish gems to RubyGems
         env:
           RUBYGEMS_API_KEY: ${{ secrets.RUBYGEM_TOKEN }}
+          VERSION: ${{ github.ref_name }}
         run: |
           mkdir -p $HOME/.gem
           touch $HOME/.gem/credentials
           chmod 0600 $HOME/.gem/credentials
           printf -- "---\n:rubygems_api_key: ${RUBYGEMS_API_KEY}\n" > $HOME/.gem/credentials
 
+          # Extract version number from tag (v1.0.2 -> 1.0.2)
+          VERSION_NUMBER="${VERSION#v}"
+
           cd pkg
-          for gem_file in *.gem; do
+          for gem_file in ahocorasick-rust-${VERSION_NUMBER}*.gem; do
             echo "Publishing ${gem_file}..."
             gem push "${gem_file}"
           done
