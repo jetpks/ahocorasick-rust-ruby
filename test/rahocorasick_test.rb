@@ -346,4 +346,162 @@ class RahocorasickTest < Test::Unit::TestCase
     result = matcher.replace_all(text, { 'ruby' => 'Python' })
     assert_equal('I love Python and Python', result)
   end
+
+  # lookup_overlapping tests
+  def test_lookup_overlapping_finds_all_overlapping_matches
+    matcher = AhoCorasickRust.new(%w[abc bcd cde])
+    result = matcher.lookup_overlapping('abcde')
+    assert_equal(%w[abc bcd cde], result)
+  end
+
+  def test_lookup_overlapping_vs_lookup
+    matcher = AhoCorasickRust.new(%w[abc bcd])
+    # Regular lookup uses leftmost-first by default
+    assert_equal(['abc'], matcher.lookup('abcd'))
+    # Overlapping finds both
+    assert_equal(%w[abc bcd], matcher.lookup_overlapping('abcd'))
+  end
+
+  def test_lookup_overlapping_with_no_matches
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    result = matcher.lookup_overlapping('hello world')
+    assert_equal([], result)
+  end
+
+  def test_lookup_overlapping_with_multiple_occurrences
+    matcher = AhoCorasickRust.new(%w[a ab])
+    result = matcher.lookup_overlapping('aab')
+    # Finds: 'a' at 0, 'a' at 1, 'ab' at 1
+    assert_equal(['a', 'a', 'ab'], result)
+  end
+
+  def test_lookup_overlapping_case_insensitive
+    matcher = AhoCorasickRust.new(%w[abc bcd], case_insensitive: true)
+    result = matcher.lookup_overlapping('ABCDE')
+    assert_equal(%w[abc bcd], result)
+  end
+
+  # match_kind tests
+  def test_match_kind_leftmost_first
+    matcher = AhoCorasickRust.new(%w[abc abcd], match_kind: :leftmost_first)
+    # First pattern in list wins
+    result = matcher.lookup('abcd')
+    assert_equal(['abc'], result)
+  end
+
+  def test_match_kind_leftmost_longest
+    matcher = AhoCorasickRust.new(%w[abc abcd], match_kind: :leftmost_longest)
+    # Longest match wins
+    result = matcher.lookup('abcd')
+    assert_equal(['abcd'], result)
+  end
+
+  def test_match_kind_standard
+    matcher = AhoCorasickRust.new(%w[abcd abc], match_kind: :standard)
+    # Standard Aho-Corasick - reports matches as they're found in the automaton
+    # In this case 'abc' is found first (at position 0-3), so it reports that
+    result = matcher.lookup('abcd')
+    assert_equal(['abc'], result)
+  end
+
+  def test_match_kind_default_is_leftmost_first
+    matcher1 = AhoCorasickRust.new(%w[abc abcd])
+    matcher2 = AhoCorasickRust.new(%w[abc abcd], match_kind: :leftmost_first)
+
+    text = 'abcd'
+    assert_equal(matcher1.lookup(text), matcher2.lookup(text))
+  end
+
+  def test_match_kind_invalid_raises_error
+    assert_raise(ArgumentError) do
+      AhoCorasickRust.new(%w[foo bar], match_kind: :invalid)
+    end
+  end
+
+  def test_match_kind_with_case_insensitive
+    matcher = AhoCorasickRust.new(
+      %w[abc abcd],
+      match_kind: :leftmost_longest,
+      case_insensitive: true
+    )
+    result = matcher.lookup('ABCD')
+    assert_equal(['abcd'], result)
+  end
+
+  # find_first tests
+  def test_find_first_returns_first_match
+    matcher = AhoCorasickRust.new(%w[foo bar baz])
+    result = matcher.find_first('hello foo bar baz')
+    assert_equal('foo', result)
+  end
+
+  def test_find_first_returns_nil_when_no_match
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    result = matcher.find_first('hello world')
+    assert_nil(result)
+  end
+
+  def test_find_first_with_empty_patterns
+    matcher = AhoCorasickRust.new([])
+    result = matcher.find_first('hello world')
+    assert_nil(result)
+  end
+
+  def test_find_first_case_insensitive
+    matcher = AhoCorasickRust.new(['Ruby'], case_insensitive: true)
+    result = matcher.find_first('I love ruby and RUBY')
+    assert_equal('Ruby', result)
+  end
+
+  def test_find_first_with_unicode
+    matcher = AhoCorasickRust.new(['数据', '工具'])
+    result = matcher.find_first('金数据工具')
+    assert_equal('数据', result)
+  end
+
+  # find_first_with_position tests
+  def test_find_first_with_position_returns_match_and_position
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    text = 'hello foo world'
+    result = matcher.find_first_with_position(text)
+
+    assert_equal({ pattern: 'foo', start: 6, end: 9 }, result)
+  end
+
+  def test_find_first_with_position_returns_nil_when_no_match
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    result = matcher.find_first_with_position('hello world')
+    assert_nil(result)
+  end
+
+  def test_find_first_with_position_finds_earliest
+    matcher = AhoCorasickRust.new(%w[bar foo])
+    text = 'foo bar baz'
+    result = matcher.find_first_with_position(text)
+
+    # 'foo' appears first in text, even though 'bar' is first in pattern list
+    assert_equal({ pattern: 'foo', start: 0, end: 3 }, result)
+  end
+
+  def test_find_first_with_position_case_insensitive
+    matcher = AhoCorasickRust.new(['Ruby'], case_insensitive: true)
+    result = matcher.find_first_with_position('I love RUBY')
+
+    assert_equal({ pattern: 'Ruby', start: 7, end: 11 }, result)
+  end
+
+  def test_find_first_with_position_with_match_kind_leftmost_longest
+    matcher = AhoCorasickRust.new(%w[abc abcd], match_kind: :leftmost_longest)
+    result = matcher.find_first_with_position('abcd')
+
+    assert_equal({ pattern: 'abcd', start: 0, end: 4 }, result)
+  end
+
+  # Combined features tests
+  def test_overlapping_with_match_kind_standard
+    matcher = AhoCorasickRust.new(%w[ab bc], match_kind: :standard)
+    # Overlapping should still find overlaps regardless of match_kind
+    result = matcher.lookup_overlapping('abc')
+    assert_equal(%w[ab bc], result)
+  end
 end

@@ -1,5 +1,5 @@
-use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
-use magnus::{method, function, prelude::*, Error, Ruby, RHash, RArray, Value};
+use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
+use magnus::{method, function, prelude::*, Error, Ruby, RHash, RArray, Value, Symbol};
 
 #[magnus::wrap(class = "AhoCorasickRust")]
 pub struct AhoCorasickRust {
@@ -11,13 +11,33 @@ impl AhoCorasickRust {
     fn new_impl(ruby: &Ruby, words: Vec<String>, kwargs: Option<RHash>) -> Result<Self, Error> {
         let mut builder = AhoCorasickBuilder::new();
 
-        // Check for case_insensitive option if kwargs provided
+        // Check for options if kwargs provided
         if let Some(kwargs) = kwargs {
+            // case_insensitive option
             if let Some(val) = kwargs.get(ruby.to_symbol("case_insensitive")) {
                 if let Ok(case_insensitive) = bool::try_convert(val) {
                     if case_insensitive {
                         builder.ascii_case_insensitive(true);
                     }
+                }
+            }
+
+            // match_kind option
+            if let Some(val) = kwargs.get(ruby.to_symbol("match_kind")) {
+                if let Some(sym) = Symbol::from_value(val) {
+                    let kind_str = sym.name()?.to_string();
+                    let match_kind = match kind_str.as_ref() {
+                        "standard" => MatchKind::Standard,
+                        "leftmost_first" => MatchKind::LeftmostFirst,
+                        "leftmost_longest" => MatchKind::LeftmostLongest,
+                        _ => {
+                            return Err(Error::new(
+                                ruby.exception_arg_error(),
+                                format!("Invalid match_kind: '{}'. Valid values are :standard, :leftmost_first, :leftmost_longest", kind_str)
+                            ));
+                        }
+                    };
+                    builder.match_kind(match_kind);
                 }
             }
         }
@@ -48,6 +68,31 @@ impl AhoCorasickRust {
 
     fn is_match(&self, haystack: String) -> bool {
         self.ac.is_match(&haystack)
+    }
+
+    fn lookup_overlapping(&self, haystack: String) -> Vec<String> {
+        let mut matches = vec![];
+        for mat in self.ac.find_overlapping_iter(&haystack) {
+            matches.push(self.words[mat.pattern()].clone());
+        }
+        matches
+    }
+
+    fn find_first(&self, haystack: String) -> Option<String> {
+        self.ac.find(&haystack).map(|mat| self.words[mat.pattern()].clone())
+    }
+
+    fn find_first_with_position(&self, haystack: String) -> Result<Option<RHash>, Error> {
+        let ruby = Ruby::get().unwrap();
+        if let Some(mat) = self.ac.find(&haystack) {
+            let hash = ruby.hash_new();
+            hash.aset(ruby.to_symbol("pattern"), self.words[mat.pattern()].clone())?;
+            hash.aset(ruby.to_symbol("start"), mat.start())?;
+            hash.aset(ruby.to_symbol("end"), mat.end())?;
+            Ok(Some(hash))
+        } else {
+            Ok(None)
+        }
     }
 
     fn lookup_with_positions(&self, haystack: String) -> Result<RArray, Error> {
@@ -137,6 +182,9 @@ fn main(ruby: &Ruby) -> Result<(), Error> {
     class.define_singleton_method("new", function!(AhoCorasickRust::new, -1))?;
     class.define_method("lookup", method!(AhoCorasickRust::lookup, 1))?;
     class.define_method("match?", method!(AhoCorasickRust::is_match, 1))?;
+    class.define_method("lookup_overlapping", method!(AhoCorasickRust::lookup_overlapping, 1))?;
+    class.define_method("find_first", method!(AhoCorasickRust::find_first, 1))?;
+    class.define_method("find_first_with_position", method!(AhoCorasickRust::find_first_with_position, 1))?;
     class.define_method("lookup_with_positions", method!(AhoCorasickRust::lookup_with_positions, 1))?;
     class.define_method("replace_all", method!(AhoCorasickRust::replace_all, -1))?;
     Ok(())
