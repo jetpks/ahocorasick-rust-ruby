@@ -46,6 +46,10 @@ impl AhoCorasickRust {
         matches
     }
 
+    fn is_match(&self, haystack: String) -> bool {
+        self.ac.is_match(&haystack)
+    }
+
     fn lookup_with_positions(&self, haystack: String) -> Result<RArray, Error> {
         let ruby = Ruby::get().unwrap();
         let matches = ruby.ary_new();
@@ -132,6 +136,7 @@ fn main(ruby: &Ruby) -> Result<(), Error> {
     let class = ruby.define_class("AhoCorasickRust", ruby.class_object())?;
     class.define_singleton_method("new", function!(AhoCorasickRust::new, -1))?;
     class.define_method("lookup", method!(AhoCorasickRust::lookup, 1))?;
+    class.define_method("match?", method!(AhoCorasickRust::is_match, 1))?;
     class.define_method("lookup_with_positions", method!(AhoCorasickRust::lookup_with_positions, 1))?;
     class.define_method("replace_all", method!(AhoCorasickRust::replace_all, -1))?;
     Ok(())

@@ -148,6 +148,61 @@ class RahocorasickTest < Test::Unit::TestCase
     assert_raise(TypeError) { matcher.lookup(['hello', 'world']) }
   end
 
+  # match? tests
+  def test_match_returns_true_when_pattern_found
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    assert_true(matcher.match?('hello foo world'))
+  end
+
+  def test_match_returns_false_when_no_pattern_found
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    assert_false(matcher.match?('hello world'))
+  end
+
+  def test_match_returns_true_for_multiple_patterns
+    matcher = AhoCorasickRust.new(%w[foo bar baz])
+    assert_true(matcher.match?('foo and bar'))
+  end
+
+  def test_match_returns_false_for_empty_haystack
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    assert_false(matcher.match?(''))
+  end
+
+  def test_match_returns_false_with_empty_patterns
+    matcher = AhoCorasickRust.new([])
+    assert_false(matcher.match?('hello world'))
+  end
+
+  def test_match_works_with_unicode
+    matcher = AhoCorasickRust.new(['数据'])
+    assert_true(matcher.match?('金数据工具'))
+    assert_false(matcher.match?('hello world'))
+  end
+
+  def test_match_case_sensitive
+    matcher = AhoCorasickRust.new(['Ruby'])
+    assert_false(matcher.match?('I love ruby'))
+    assert_true(matcher.match?('I love Ruby'))
+  end
+
+  def test_match_case_insensitive
+    matcher = AhoCorasickRust.new(['Ruby'], case_insensitive: true)
+    assert_true(matcher.match?('I love ruby'))
+    assert_true(matcher.match?('I love RUBY'))
+    assert_true(matcher.match?('I love Ruby'))
+  end
+
+  def test_match_with_nil_haystack_raises_error
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    assert_raise(TypeError) { matcher.match?(nil) }
+  end
+
+  def test_match_with_non_string_haystack_raises_error
+    matcher = AhoCorasickRust.new(%w[foo bar])
+    assert_raise(TypeError) { matcher.match?(123) }
+  end
+
   # lookup_with_positions tests
   def test_lookup_with_positions_returns_pattern_and_offsets
     matcher = AhoCorasickRust.new(%w[fox dog])
