@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ahocorasick-rust (1.0.0)
+    ahocorasick-rust (1.0.2)
       rb_sys (~> 0.9.117)
 
 GEM
