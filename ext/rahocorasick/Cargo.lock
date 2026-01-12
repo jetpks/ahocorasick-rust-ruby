@@ -190,6 +190,7 @@ version = "0.1.0"
 dependencies = [
  "aho-corasick 1.1.4",
  "magnus",
+ "rb-sys",
 ]
 
 [[package]]
