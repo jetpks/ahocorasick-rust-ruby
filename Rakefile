@@ -4,10 +4,12 @@ require 'rake/testtask'
 require 'rake/extensiontask'
 
 CROSS_PLATFORMS = %w[
-  aarch64-linux
+  aarch64-linux-gnu
+  aarch64-linux-musl
   arm64-darwin
   x86_64-darwin
-  x86_64-linux
+  x86_64-linux-gnu
+  x86_64-linux-musl
 ].freeze
 
 spec = Bundler.load_gemspec('ahocorasick-rust.gemspec')

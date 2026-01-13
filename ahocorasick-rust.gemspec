@@ -4,7 +4,7 @@ $LOAD_PATH.push File.expand_path('lib', __dir__)
 
 Gem::Specification.new do |s|
   s.name = 'ahocorasick-rust'
-  s.version = '2.1.0'
+  s.version = '2.2.0'
   s.platform = Gem::Platform::RUBY
   s.authors = ['Eric']
   s.email = ['eric@ebj.dev']
