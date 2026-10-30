@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 jobs:
   build_native:
@@ -72,7 +73,8 @@ jobs:
       - build_native
       - build_source
     permissions:
-      contents: write
+      contents: write   # create the GitHub release
+      id-token: write   # OIDC token for RubyGems trusted publishing
     steps:
       - uses: ruby/setup-ruby@v1
         with:
@@ -92,16 +94,19 @@ jobs:
       - name: Display structure of downloaded gems
         run: ls -R pkg/
 
+      # Trusted publishing: no API key, no OTP — a short-lived OIDC
+      # credential minted at run time, scoped to this repo + workflow
+      # (rubygems.org trusted publisher: jetpks/ahocorasick-rust-ruby,
+      # .github/workflows/release.yml). Replaces the RUBYGEM_TOKEN API
+      # key, which rubygems MFA now gates with an interactive OTP prompt
+      # CI can never answer.
+      - name: Configure RubyGems credentials
+        uses: rubygems/configure-rubygems-credentials@v2.1.0
+
       - name: Publish gems to RubyGems
         env:
-          RUBYGEMS_API_KEY: ${{ secrets.RUBYGEM_TOKEN }}
           VERSION: ${{ github.ref_name }}
         run: |
-          mkdir -p $HOME/.gem
-          touch $HOME/.gem/credentials
-          chmod 0600 $HOME/.gem/credentials
-          printf -- "---\n:rubygems_api_key: ${RUBYGEMS_API_KEY}\n" > $HOME/.gem/credentials
-
           # Extract version number from tag (v1.0.2 -> 1.0.2)
           VERSION_NUMBER="${VERSION#v}"
 
